@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta http-equiv="Expires" content="0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Cache-control" content="no-cache" />
+    <meta http-equiv="Cache" content="no-cache" />
+    <title>回复我的医生</title>
+
+    <link rel="stylesheet" href="../../css/kwjq/animate.css" />
+    <link rel="stylesheet" href="../../js/plugin/jQuery-dropload/css/dropload.css">
+
+    <!--mui-start-->
+    <link rel="stylesheet" href="../../js/plugin/mui/css/mui.min.css" />
+    <link rel="stylesheet" href="../../js/plugin/mui/css/mui.picker.all.css" />
+    <link rel="stylesheet" href="../../js/plugin/mui/css/app.css" />
+    <!--mui-end-->
+
+    <link rel="stylesheet" type="text/css" href="resources/css/litewebchat.css">
+
+    <link rel="stylesheet" href="../../js/plugin/imgUp/css/index.css" />
+
+    <link rel="stylesheet" href="resources/css/replyDoctor.css" />
+
+    <!--angular-start-->
+    <script src="../../css/ionic/ionic.bundle.min.js"></script>
+    <!--angular-end-->
+
+    <script src="../../js/plugin/jquery-2.2.4.min.js"></script>
+    <script src="../../js/common.js"></script>
+    <script src="../../js/plugin/jweixin-1.2.0.js"></script>
+
+    <!--mui-start-->
+    <script src="../../js/plugin/mui/js/mui.min.js"></script>
+    <script src="../../js/plugin/mui/js/mui.picker.all.js"></script>
+    <script src="../../js/plugin/mui/js/mui.zoom.js"></script>
+    <script src="../../js/plugin/mui/js/mui.previewimage.js"></script>
+    <script src="../../js/plugin/mui/js/mui.showLoading.js"></script>
+    <!--mui-end-->
+
+    <!--水波荡漾-start-->
+    <!--<script src="/js/plugin/ripple/ripple.min.js"></script>-->
+    <!--水波荡漾-end-->
+
+    <script src="../../js/plugin/jQuery-dropload/lib/dropload.js"></script>
+
+    <script src="../../js/plugin/exif-js/exif.js"></script>
+    <script src="../../js/plugin/vconsole.min.js"></script>
+
+    <style>
+        html, body{
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body ng-app="commApp"
+      ng-controller="replyDoctorController">
+
+<div class="chat-tip">
+    <span>因医生工作繁忙,可能不会立即回复您的消息.建议您关闭此页面,当医生回复您时,公众号将通知您.</span>
+</div>
+
+<div class="lite-chatbox"
+     id="chat-container">
+
+    <div class="tips" ng-cloak ng-show="noStatus">
+        <span>系统消息：暂无更多数据</span>
+    </div>
+
+    <div ng-cloak ng-repeat="item in list track by $index">
+        <div class="cmsg"
+             id="chat-{{$index}}"
+             ng-class="{0: 'cleft', 1:'cright'}[item.role]">
+            <img class="headIcon radius"
+                 ondragstart="return false;"
+                 oncontextmenu="return false;"
+                 ng-src="{{item.avatar}}">
+            <span class="name" ng-cloak>{{item.name}}<span class="htitle chat-time">{{item.time}}</span></span>
+            <span class="content" ng-cloak ng-if="item.type === 0">
+                {{item.data}}
+            </span>
+            <span class="content" ng-cloak ng-if="item.type === 1">
+                <img ng-src="{{item.data}}"
+                     data-preview-src="" data-preview-group="1"
+                     class="loading" onerror="this.src='resources/img/none.png'" />
+            </span>
+            <span class="content" ng-cloak ng-if="item.type === 2">
+
+                <div class="reply-doctor-sound-item">
+                    <div class="reply-doctor-sound-label"
+                         ng-click="play($event, item.length, $index);"
+                         id="audio-parent-{{$index}}">
+
+                        <audio preload="auto" id="audio-{{$index}}" class="pause">
+                            <source ng-src="{{voiceUrl(item.data)}}" type="audio/mpeg">
+                        </audio>
+                        <s></s>
+
+                    </div>
+
+                    <div class="reply-doctor-sound-value">{{item.length}}″</div>
+
+                </div>
+
+            </span>
+        </div>
+    </div>
+
+    <div class="tips" ng-cloak ng-show="!chatStatus">
+        <span class="tips-danger">系统消息：发送信息过于频繁,请稍后再试</span>
+    </div>
+
+    <div class="chat-none"></div>
+</div>
+
+<div class="chat-chat" ng-cloak ng-show="chatStatus">
+    <div class="chat-chat-voice" ng-click="vStart();"></div>
+    <div class="chat-chat-img" ng-click="iStart();"></div>
+    <!--<div class="chat-chat-none"></div>-->
+    <div class="chat-chat-font">
+        <input id="chat-input" type="text" placeholder="请输入信息" ng-model="inputVal" />
+    </div>
+    <div class="chat-chat-submit" ng-click="fSubmit()">
+        <div id="chat-button">发送</div>
+    </div>
+</div>
+
+<div class="chat-chat"
+     id="chat-forbidden"
+     ng-cloak
+     ng-show="!chatStatus"
+     ng-click="closeChat();">
+    关 闭 页 面
+</div>
+
+<aside class="masks" ng-cloak ng-show="voiceState">
+    <div class="reason-div">
+        <div class="reason-font">
+            <span>剩余</span>
+            <span ng-bind="curCount"></span>
+            <span>秒</span>
+        </div>
+        <div class="reason-content"></div>
+        <div class="reason-button">
+            <div class="reason-cancel" ng-click="vCancel();">
+                <span>取消</span>
+            </div>
+            <div class="reason-submit" ng-click="vSubmit();">
+                <span>说完了</span>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<aside class="masks" ng-cloak ng-show="imgState">
+    <div class="reason-div">
+        <div class="reason-font">
+            点击上传图片
+        </div>
+
+        <div class="reason-content-img">
+
+            <div class="z_photo upimg-div">
+                <section class="z_file fl">
+                    <!--<img src="/js/plugin/imgUp/img/a11.png" class="add-img">-->
+                    <input type="file" name="file" id="file" class="file" value="" accept="image/jpg,image/jpeg,image/png,image/bmp" multiple />
+                </section>
+            </div>
+
+        </div>
+
+        <div class="reason-button">
+            <div class="reason-cancel" ng-click="iCancel();">
+                <span>取消</span>
+            </div>
+            <div class="reason-submit" ng-click="iSubmit();">
+                <span>确认</span>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<aside class="mask works-mask">
+    <div class="mask-content" style="position: fixed;top: 50%;left: 16%;width: 270px;height: 140px;border-radius: 13px;margin: 0;">
+        <p class="del-p" style="height: 86px;line-height: 94px;">您确定要删除吗？</p>
+        <p class="check-p" style="height: 45px;line-height: 55px;">
+            <span class="del-com wsdel-ok">确定</span>
+            <span class="wsdel-no">取消</span>
+        </p>
+    </div>
+</aside>
+
+<div id="chat-down">&nbsp;</div>
+
+<div ng-cloak ng-show="false"
+     class="lite-chatbox"
+     id="chat-container1">
+
+    <!-- cleft 左 -->
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">chenjunyu19 <span class="htitle chat-time">2019-08-05 10:45</span></span>
+        <span class="content">这是什么什么鬼？</span>
+    </div>
+
+    <!-- cright 右 -->
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">SuperPaxxs</span>
+        <span class="content">LiteChat_Frame（轻聊天气泡框架），一个贼简洁 <del>(简单)</del> 、美观、易用的 HTML 聊天界面框架</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">SuperPaxxs</span>
+        <span class="content">它简洁而不简单，能使你开发聊天界面更快速</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">chenjunyu19</span>
+        <span class="content">直接说，气泡是谁的？</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">SuperPaxxs</span>
+        <span class="content">好吧，气泡css来自 <a href="http://i.intas.cn/" target="_blank">Haswikr的Blog</a> 的机器人气泡，我给白色的加了点边框 😝 </span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/H.jpg">
+        <span class="name"><span class="htitle admin">admin</span>Haswikr</span>
+        <span class="content">当初调色煞费苦心</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/O.jpg">
+        <span class="name"><span class="htitle owner">owner</span>Sonui</span>
+        <span class="content">这设计真棒</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name"><span class="htitle">menber123456789789</span>chenjunyu19</span>
+        <span class="content">那咋用啊？</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">SuperPaxxs</span>
+        <span class="content">
+              <del>诶哟少年你找对人了</del><br><br>
+              如果只是使用，那非常简单。<br>
+              <h2>使用指北</h2>
+              1.引用css： litechat.css<br><br>
+              &lt;link type="text/css" href="//lab.morfans.cn/LiteWebChat_Frame/litewebchat.css" rel="stylesheet" /&gt;
+              <br>或<br>
+              &lt;link type="text/css" href="//lab.morfans.cn/LiteWebChat_Frame/litewebchat.min.css" rel="stylesheet" /&gt;<br><br>
+              2.创建一个 DIV ，用来容纳聊天对话，目的是不让 css 干扰页面其他内容：<br><br>
+              &lt;div class="lite-chatbox"&gt; <br>
+              ...<br>
+              &lt;/div&gt;<br><br>
+              话说你就不会看下源码吗...<b>楼下就是特性演示</b>
+          </span>
+    </div>
+
+    <div class="tips">
+        <span>Chenjunyu19 退出了聊天室并撩了你一把</span>
+    </div>
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">空消息测试1</span>
+        <span class="content"></span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">空消息测试2</span>
+        <span class="content">&nbsp;</span>
+    </div>
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">chenjunyu19</span>
+        <span class="content">注意，上面两条空消息的消息内容代码不一样</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">SuperPaxxs</span>
+        <span class="content">头像换成方形请去掉 radius </span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">chenjunyu19</span>
+        <span class="content">我是左边的方形头像</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">图片消息</span>
+        <span class="content"><img src="resources/img/chat/img2.png"></span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">图片消息2</span>
+        <span class="content"><img src="resources/img/chat/img.png"><br>
+           图片带文字是可以的 <del>（废话）</del></span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">右边长消息</span>
+        <span class="content">我的消息真的超级长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长欸</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">左边长消息</span>
+        <span class="content">这么巧鸭，我的也超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超级长的欸</span>
+    </div>
+
+    <div class="tips">
+        <span class="tips-danger">系统消息：左/右边长消息被管理员批判一番……</span>
+    </div>
+
+    <div class="tips">
+        <span>系统消息：normal</span>
+    </div>
+
+    <div class="tips">
+        <span class="tips-primary">系统消息：primary</span>
+    </div>
+
+    <div class="tips">
+        <span class="tips-success">系统消息：success</span>
+    </div>
+
+    <div class="tips">
+        <span class="tips-info">系统消息：info</span>
+    </div>
+
+    <div class="tips">
+        <span class="tips-warning">系统消息：warning</span>
+    </div>
+
+    <div class="tips">
+        <span class="tips-danger">系统消息：danger</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">带有超链接的消息测试</span>
+        <span class="content">当然是可以有超链接的。例子在这里：<br><a href="http://morfans.cn" target="_blank">你敢点我吗</a> ← 戳这里</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">全符号测试</span>
+        <span class="content">。，；？：！‘’“”@ˆ.,;?:!'"〝〞﹫ˇ</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">全emoji测试</span>
+        <span class="content">😀😝🐂🍺</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">&nbsp;</span>
+        <span class="content">当无昵时候需要 &amp;nbsp; 填充</span>
+    </div>
+
+    <div class="cright cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/B.jpg">
+        <span class="name">SuperPaxxs</span>
+        <span class="content">换行用 &lt;br&gt; ，HTML 你懂的..</span>
+    </div>
+
+    <div class="cleft cmsg">
+        <img class="headIcon radius" ondragstart="return false;" oncontextmenu="return false;" src="resources/img/chat/A.jpg">
+        <span class="name">chenjunyu19</span>
+        <span class="content">以上就是全部的特性，以后有空再更</span>
+    </div>
+
+
+</div>
+
+<script src="../resources/js/app.js"></script>
+<script src="resources/js/replyDoctor.js"></script>
+
+</body>
+</html>

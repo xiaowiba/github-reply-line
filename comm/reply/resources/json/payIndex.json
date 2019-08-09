@@ -1,0 +1,12 @@
+{
+  "data":{
+    "accessKey":"42b891cd",
+    "addaUrl":"https://apidevelop.mdruby.cn",
+    "doctorId":5387,
+    "openId":"oTcawv3SIFf9MGgsMnm1hPdoD8vM",
+    "patientId":16069
+  },
+  "isdes":false,
+  "message":"成功",
+  "result":200
+}
